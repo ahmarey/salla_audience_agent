@@ -10,3 +10,4 @@ langchain-google-genai # Or your preferred LLM provider library
 # Utilities
 pydantic
 python-dotenv
+python-dateutil

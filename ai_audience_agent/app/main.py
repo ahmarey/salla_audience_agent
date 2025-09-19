@@ -1,6 +1,5 @@
 import os
-from typing import List, Literal, Optional, TypedDict, 
-
+from typing import List, Literal, Optional, TypedDict, Any
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -22,7 +21,7 @@ class Filter(BaseModel):
     """Represents a single filter condition."""
     field: str = Field(description="The field to filter on. Must be one of the supported fields.")
     operator: str = Field(description="The operator to use for the filter. Must be one of the supported operators.")
-    value: str | int | float | list = Field(description="The value for the filter.")
+    value: Any = Field(description="The value for the filter.")
 
 class StructuredOutput(BaseModel):
     """The structured JSON output that the LLM should generate."""
