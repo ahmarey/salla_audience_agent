@@ -168,13 +168,13 @@ Your JSON output:
 
 # Node to validate the LLM's output
 def validation_node(state: AgentState):
-    """Validates and normalizes the parsed filters against the supported schema."""
+    """Validates, normalizes, and cleans up the parsed filters."""
     print("\n--- 🛡️ VALIDATING FILTERS ---")
     if not state.get("filters"):
         return {"error": "No valid filters were found. The prompt may contain unsupported fields or be too ambiguous."}
-    validated_filters = []
+    initial_validated_filters = []
     for f in state["filters"]:
-        # NEW: Check for missing or null values
+        # Check for missing or null values
         if f.value is None:
             error_msg = f"A value is required for the field '{f.field}' but was not found."
             return {"error": error_msg, "filters": None}
@@ -221,7 +221,7 @@ def validation_node(state: AgentState):
                 f.value = coerced_values
             elif expected_type == int: f.value = int(float(f.value))
             elif expected_type == float: f.value = float(f.value)
-            elif expected_type == bool: # NEW: Handle boolean coercion
+            elif expected_type == bool:
                 if str(f.value).lower() in ["true", "1", "yes"]: f.value = True
                 else: f.value = False
             elif expected_type == "date":
@@ -232,15 +232,41 @@ def validation_node(state: AgentState):
                     f.value = normalized_date
                 else:
                     f.value = parse_date(str(f.value)).strftime("%Y-%m-%d")
-            
+
         except (ValueError, TypeError) as e:
             error_msg = f"Invalid value '{f.value}' for field '{field_name}'. Details: {e}"
             return {"error": error_msg, "filters": None}
-
-        validated_filters.append(f)
+        initial_validated_filters.append(f)
     
-    print("--- ✅ VALIDATION SUCCESSFUL ---")
-    return {"filters": validated_filters, "error": None}
+    # 1. Merge filters with the same field and operator
+    merged_filters = {}
+    for f in initial_validated_filters:
+        key = (f.field, f.operator)
+        if key not in merged_filters:
+            merged_filters[key] = f
+        else:
+            # If key exists, merge values into a list
+            existing_value = merged_filters[key].value
+            if not isinstance(existing_value, list):
+                existing_value = [existing_value]
+            
+            new_value = f.value
+            if not isinstance(new_value, list):
+                new_value = [new_value]
+            
+            merged_filters[key].value = existing_value + new_value
+
+    final_filters = list(merged_filters.values())
+
+    # 2. Unwrap single-item lists
+    for f in final_filters:
+        field_schema = SUPPORTED_FILTERS[f.field]
+        # Check if the schema supports `str` and the value is a single-item list
+        if field_schema["type"] == (str, list) and isinstance(f.value, list) and len(f.value) == 1:
+            f.value = f.value[0]
+
+    print("--- ✅ VALIDATION & CLEANUP SUCCESSFUL ---")
+    return {"filters": final_filters, "error": None}
 
 def error_node(state: AgentState):
     """A simple node to print out the error and end the graph."""
