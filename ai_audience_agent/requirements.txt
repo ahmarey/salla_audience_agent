@@ -11,3 +11,5 @@ langchain-google-genai # Or your preferred LLM provider library
 pydantic
 python-dotenv
 python-dateutil
+pytest
+requests

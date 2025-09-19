@@ -1,0 +1,71 @@
+[
+    {
+        "id": "en_simple_equality",
+        "prompt": "Find male customers",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "gender",
+                    "operator": "=",
+                    "value": "male"
+                }
+            ]
+        }
+    },
+    {
+        "id": "en_normalization_or",
+        "prompt": "customers from Riyadh or Jeddah",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "city",
+                    "operator": "=",
+                    "value": ["Riyadh", "Jeddah"]
+                }
+            ]
+        }
+    },
+    {
+        "id": "en_normalization_date",
+        "prompt": "users who joined in the last 7 days",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "joining_date",
+                    "operator": ">=",
+                    "value": "2025-09-12"
+                }
+            ]
+        }
+    },
+    {
+        "id": "ar_complex",
+        "prompt": "العملاء في مصر الذين لديهم أكثر من 10 طلبات",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "country",
+                    "operator": "=",
+                    "value": "Egypt"
+                },
+                {
+                    "field": "total_orders",
+                    "operator": ">",
+                    "value": 10
+                }
+            ]
+        }
+    },
+    {
+        "id": "en_error_unsupported_field",
+        "prompt": "Find users by their shoe size",
+        "expected_status": 400,
+        "expected_output": {
+            "detail": "No valid filters were found. The prompt may contain unsupported fields or be too ambiguous."
+        }
+    }
+]
