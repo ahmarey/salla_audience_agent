@@ -1,7 +1,8 @@
 import os
+import re
 from typing import List, Literal, Optional, TypedDict, Any
 from datetime import datetime
-from dateutil.parser import parse as parse_date # NEW: For parsing dates
+from dateutil.parser import parse as parse_date
 
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
@@ -94,9 +95,9 @@ Your JSON output:
     print(f"--- ✅ PARSING COMPLETE ---")
     return {"filters": result.filters}
 
-# NEW: Node to validate the LLM's output
+# Node to validate the LLM's output
 def validation_node(state: AgentState):
-    """Validates the parsed filters against the supported schema."""
+    """Validates and normalizes the parsed filters against the supported schema."""
     print("\n--- 🛡️ VALIDATING FILTERS ---")
     if not state.get("filters"):
         return {"error": "No filters were parsed from the prompt."}
@@ -104,42 +105,74 @@ def validation_node(state: AgentState):
     validated_filters = []
     for f in state["filters"]:
         field_name = f.field
+        # 1. Check if the field is supported
         if field_name not in SUPPORTED_FILTERS:
             error_msg = f"The field '{field_name}' is not supported. Please use one of: {list(SUPPORTED_FILTERS.keys())}"
             print(f"--- ❌ VALIDATION FAILED: {error_msg} ---")
             return {"error": error_msg, "filters": None}
+
+        field_schema = SUPPORTED_FILTERS[field_name]
         
-        # Add more checks here for operators and value types later...
-        
-        # Simple date normalization example
-        if SUPPORTED_FILTERS[field_name]["type"] == "date":
-            try:
-                # Attempt to parse the date value
-                parsed_value = parse_date(str(f.value))
-                f.value = parsed_value.strftime("%Y-%m-%d")
-            except ValueError:
-                error_msg = f"Invalid date format for field '{field_name}': {f.value}"
-                print(f"--- ❌ VALIDATION FAILED: {error_msg} ---")
-                return {"error": error_msg, "filters": None}
+        # 2. Check if the operator is supported for this field
+        if f.operator not in field_schema["operators"]:
+            error_msg = f"Operator '{f.operator}' is not supported for field '{field_name}'. Supported operators are: {field_schema['operators']}"
+            print(f"--- ❌ VALIDATION FAILED: {error_msg} ---")
+            return {"error": error_msg, "filters": None}
+
+        # 3. Validate and Coerce the value type
+        try:
+            expected_type = field_schema["type"]
+            
+            # Handle 'between' operator specifically
+            if f.operator == "between":
+                if isinstance(f.value, str):
+                    # Try to split a string like '3,5' into a list
+                    values = re.findall(r'[0-9.]+', str(f.value))
+                elif isinstance(f.value, list):
+                    values = f.value
+                else:
+                    raise ValueError("must be a list or a comma-separated string.")
+                
+                # Coerce each value in the list to the expected type
+                coerced_values = []
+                for val in values:
+                    if expected_type == int:
+                        coerced_values.append(int(float(val)))
+                    elif expected_type == float:
+                        coerced_values.append(float(val))
+                    elif expected_type == "date":
+                        coerced_values.append(parse_date(str(val)).strftime("%Y-%m-%d"))
+                    else:
+                        coerced_values.append(val)
+                f.value = coerced_values
+
+            # Handle other operators
+            elif expected_type == int:
+                f.value = int(float(f.value)) # Use float() first to handle "10.0"
+            elif expected_type == float:
+                f.value = float(f.value)
+            elif expected_type == "date":
+                f.value = parse_date(str(f.value)).strftime("%Y-%m-%d")
+            # String and list types often don't need explicit coercion if the LLM is good
+            
+        except (ValueError, TypeError) as e:
+            error_msg = f"Invalid value '{f.value}' for field '{field_name}'. Expected type '{field_schema['type']}'. Details: {e}"
+            print(f"--- ❌ VALIDATION FAILED: {error_msg} ---")
+            return {"error": error_msg, "filters": None}
 
         validated_filters.append(f)
     
     print("--- ✅ VALIDATION SUCCESSFUL ---")
     return {"filters": validated_filters, "error": None}
 
-# NEW: A simple node to handle errors
 def error_node(state: AgentState):
     """A simple node to print out the error and end the graph."""
     print(f"\n--- 🛑 ERROR HANDLED ---")
     print(state.get("error"))
     return {}
-
-# --- NEW: 5. Define Conditional Routing ---
+# --- 5. Define Conditional Routing ---
 def router(state: AgentState) -> Literal["error_node", "__end__"]:
-    """
-    This function decides the next step based on the agent's state.
-    If an error exists, it routes to the error_node. Otherwise, it ends.
-    """
+    """This function decides the next step based on the agent's state."""
     if state.get("error"):
         return "error_node"
     return "__end__"
