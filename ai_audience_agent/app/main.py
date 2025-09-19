@@ -57,46 +57,57 @@ SUPPORTED_FILTERS = {
     # Add all other supported fields here...
 }
 
+def _calculate_delta(num: int, unit: str) -> timedelta:
+    """Calculates a timedelta object from a number and a unit string."""
+    unit = unit.lower()
+    if unit.startswith("day"):
+        return timedelta(days=num)
+    elif unit.startswith("week"):
+        return timedelta(weeks=num)
+    elif unit.startswith("month"):
+        # Note: This is an approximation
+        return timedelta(days=num * 30)
+    elif unit.startswith("year"):
+        # Note: This doesn't account for leap years
+        return timedelta(days=num * 365)
+    else:
+        # Fails loudly for unsupported units, as you suggested
+        raise ValueError(f"Unsupported time unit: '{unit}'")
+
+
 # Helper function to handle relative dates
 def normalize_relative_date(value: str) -> Optional[str]:
     """
-    Converts relative date strings like "today", "last 7 days" into YYYY-MM-DD format.
+    Converts relative date strings into YYYY-MM-DD format.
     """
     text = value.lower().strip()
     today = datetime.now()
-    
+
     if text == "today":
         return today.strftime("%Y-%m-%d")
     if text == "yesterday":
         return (today - timedelta(days=1)).strftime("%Y-%m-%d")
-    
-    # Handle "last X days/weeks/months"
-    match = re.match(r'last (\d+) (days|weeks|months)', text)
-    if match:
-        num = int(match.group(1))
-        unit = match.group(2)
-        if unit == "days":
-            delta = timedelta(days=num)
-        elif unit == "weeks":
-            delta = timedelta(weeks=num)
-        else: # months
-            delta = timedelta(days=num * 30) # Approximation
-        return (today - delta).strftime("%Y-%m-%d")
-        
-    # Handle "next X days/weeks/months"
-    match = re.match(r'next (\d+) (days|weeks|months)', text)
-    if match:
-        num = int(match.group(1))
-        unit = match.group(2)
-        if unit == "days":
-            delta = timedelta(days=num)
-        elif unit == "weeks":
-            delta = timedelta(weeks=num)
-        else: # months
-            delta = timedelta(days=num * 30)
-        return (today + delta).strftime("%Y-%m-%d")
 
-    # If no pattern matches, return None
+    # A more robust regex that handles singular and plural units, including "year"
+    pattern = r'(\d+)\s+(days?|weeks?|months?|years?)'
+
+    # Handle formats like "7 days ago" or "last 2 years"
+    if "ago" in text or "last" in text:
+        match = re.search(pattern, text)
+        if match:
+            num, unit = int(match.group(1)), match.group(2)
+            delta = _calculate_delta(num, unit)
+            return (today - delta).strftime("%Y-%m-%d")
+
+    # Handle formats like "next 3 weeks"
+    if "next" in text:
+        match = re.search(pattern, text)
+        if match:
+            num, unit = int(match.group(1)), match.group(2)
+            delta = _calculate_delta(num, unit)
+            return (today + delta).strftime("%Y-%m-%d")
+
+    # If no pattern matches, return None so it can be parsed as a static date
     return None
 
 # --- 4. Define Graph Nodes ---
@@ -107,15 +118,20 @@ def parsing_node(state: AgentState):
     system_prompt = """
 You are an expert at converting natural language queries into structured JSON filters.
 Your task is to parse the user's prompt and extract a list of filter conditions.
+
 You must adhere to the following constraints:
 1.  The output must be a JSON object that matches this Pydantic schema: `StructuredOutput`.
-2.  The "field" must be one of the following supported fields:
-    - gender, birthday, birthday_days, joining_date, last_login
-    - doesnt_have_orders, have_cancelled_orders, latest_purchase
-    - total_sales, total_orders, store_rating
-    - doesnt_have_email
-    - country, city
-3.  The "operator" must be one of the following: =, !=, <, >, <=, >=, between.
+2.  **CRITICAL RULE: If the user's prompt contains a filter field that is NOT on the supported list, you MUST return an empty list for the "filters" key.** Do not try to guess a similar field.
+3.  **DATE RULE: If the user uses a relative date (e.g., "last 30 days", "yesterday", "2 weeks ago"), you MUST convert it to a static string like "last 30 days" or "2 weeks ago".** Do not convert it to a YYYY-MM-DD date yourself.
+
+Supported Fields:
+- gender, birthday, birthday_days, joining_date, last_login
+- doesnt_have_orders, have_cancelled_orders, latest_purchase
+- total_sales, total_orders, store_rating
+- doesnt_have_email
+- country, city
+
+Supported Operators: =, !=, <, >, <=, >=, between
 Here is an example:
 User prompt: "Find customers in Riyadh or Jeddah who joined after Jan 2023 with more than 5 orders."
 اعثر على العملاء في الرياض أو جدة الذين انضموا بعد يناير 2023 ولديهم أكثر من 5 طلبات
@@ -139,8 +155,7 @@ def validation_node(state: AgentState):
     """Validates and normalizes the parsed filters against the supported schema."""
     print("\n--- 🛡️ VALIDATING FILTERS ---")
     if not state.get("filters"):
-        return {"error": "No filters were parsed from the prompt."}
-
+        return {"error": "No valid filters were found. The prompt may contain unsupported fields or be too ambiguous."}
     validated_filters = []
     for f in state["filters"]:
         field_name = f.field
@@ -161,7 +176,6 @@ def validation_node(state: AgentState):
         # 3. Validate and Coerce the value type
         try:
             expected_type = field_schema["type"]
-            
             # Handle multi-value strings like "Riyadh or Jeddah"
             if expected_type == (str, list) and isinstance(f.value, str):
                 # Split by comma or "or", trim whitespace, and remove empty strings
@@ -196,7 +210,9 @@ def validation_node(state: AgentState):
                 # Check for relative dates first
                 normalized_date = normalize_relative_date(str(f.value))
                 if normalized_date:
-                    f.value = normalized_date
+                    if "ago" in str(f.value).lower() or "last" in str(f.value).lower():
+                        f.operator = ">="
+                    f.value = normalized_date                    
                 else:
                     f.value = parse_date(str(f.value)).strftime("%Y-%m-%d")
             
