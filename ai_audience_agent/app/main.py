@@ -1,7 +1,7 @@
 import os
 import re
 from typing import List, Literal, Optional, TypedDict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil.parser import parse as parse_date
 
 from fastapi import FastAPI
@@ -46,9 +46,7 @@ class AgentState(TypedDict):
     filters: Optional[List[Filter]]
     error: Optional[str]
 
-# --- NEW: 3. Define Supported Filters Schema ---
-# This is our "source of truth" for validation.
-# We define every allowed field, its operators, and the expected value type.
+# --- 3. Define Supported Filters Schema ---
 SUPPORTED_FILTERS = {
     "gender": {"operators": ["=", "!="], "type": str},
     "joining_date": {"operators": ["=", "!=", ">", "<", ">=", "<=", "between"], "type": "date"},
@@ -59,6 +57,47 @@ SUPPORTED_FILTERS = {
     # Add all other supported fields here...
 }
 
+# Helper function to handle relative dates
+def normalize_relative_date(value: str) -> Optional[str]:
+    """
+    Converts relative date strings like "today", "last 7 days" into YYYY-MM-DD format.
+    """
+    text = value.lower().strip()
+    today = datetime.now()
+    
+    if text == "today":
+        return today.strftime("%Y-%m-%d")
+    if text == "yesterday":
+        return (today - timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    # Handle "last X days/weeks/months"
+    match = re.match(r'last (\d+) (days|weeks|months)', text)
+    if match:
+        num = int(match.group(1))
+        unit = match.group(2)
+        if unit == "days":
+            delta = timedelta(days=num)
+        elif unit == "weeks":
+            delta = timedelta(weeks=num)
+        else: # months
+            delta = timedelta(days=num * 30) # Approximation
+        return (today - delta).strftime("%Y-%m-%d")
+        
+    # Handle "next X days/weeks/months"
+    match = re.match(r'next (\d+) (days|weeks|months)', text)
+    if match:
+        num = int(match.group(1))
+        unit = match.group(2)
+        if unit == "days":
+            delta = timedelta(days=num)
+        elif unit == "weeks":
+            delta = timedelta(weeks=num)
+        else: # months
+            delta = timedelta(days=num * 30)
+        return (today + delta).strftime("%Y-%m-%d")
+
+    # If no pattern matches, return None
+    return None
 
 # --- 4. Define Graph Nodes ---
 
@@ -123,37 +162,43 @@ def validation_node(state: AgentState):
         try:
             expected_type = field_schema["type"]
             
+            # Handle multi-value strings like "Riyadh or Jeddah"
+            if expected_type == (str, list) and isinstance(f.value, str):
+                # Split by comma or "or", trim whitespace, and remove empty strings
+                values = [v.strip() for v in re.split(r'\s+or\s+|,', f.value)]
+                f.value = [v for v in values if v]
+
             # Handle 'between' operator specifically
-            if f.operator == "between":
+            elif f.operator == "between":
                 if isinstance(f.value, str):
                     # Try to split a string like '3,5' into a list
                     values = re.findall(r'[0-9.]+', str(f.value))
                 elif isinstance(f.value, list):
                     values = f.value
                 else:
-                    raise ValueError("must be a list or a comma-separated string.")
-                
-                # Coerce each value in the list to the expected type
+                    raise ValueError("must be a list or a parsable string.")
+                if len(values) != 2:
+                    raise ValueError(f"between operator requires exactly 2 values, but found {len(values)} in '{f.value}'")
                 coerced_values = []
                 for val in values:
-                    if expected_type == int:
-                        coerced_values.append(int(float(val)))
-                    elif expected_type == float:
-                        coerced_values.append(float(val))
-                    elif expected_type == "date":
-                        coerced_values.append(parse_date(str(val)).strftime("%Y-%m-%d"))
-                    else:
-                        coerced_values.append(val)
+                    if expected_type == int: coerced_values.append(int(float(val)))
+                    elif expected_type == float: coerced_values.append(float(val))
+                    elif expected_type == "date": coerced_values.append(parse_date(str(val)).strftime("%Y-%m-%d"))
+                    else: coerced_values.append(val)
                 f.value = coerced_values
 
-            # Handle other operators
+            # Type Coercion for other operators
             elif expected_type == int:
-                f.value = int(float(f.value)) # Use float() first to handle "10.0"
+                f.value = int(float(f.value))
             elif expected_type == float:
                 f.value = float(f.value)
             elif expected_type == "date":
-                f.value = parse_date(str(f.value)).strftime("%Y-%m-%d")
-            # String and list types often don't need explicit coercion if the LLM is good
+                # Check for relative dates first
+                normalized_date = normalize_relative_date(str(f.value))
+                if normalized_date:
+                    f.value = normalized_date
+                else:
+                    f.value = parse_date(str(f.value)).strftime("%Y-%m-%d")
             
         except (ValueError, TypeError) as e:
             error_msg = f"Invalid value '{f.value}' for field '{field_name}'. Expected type '{field_schema['type']}'. Details: {e}"
