@@ -1,0 +1,12 @@
+# API Framework
+fastapi
+uvicorn[standard]
+
+# LangChain & LangGraph
+langchain
+langgraph
+langchain-google-genai # Or your preferred LLM provider library
+
+# Utilities
+pydantic
+python-dotenv
