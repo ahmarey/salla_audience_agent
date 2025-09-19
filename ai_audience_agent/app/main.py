@@ -1,10 +1,12 @@
 import os
 from typing import List, Literal, Optional, TypedDict, Any
+from datetime import datetime
+from dateutil.parser import parse as parse_date # NEW: For parsing dates
+
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import END, StateGraph
-
+from langgraph.graph import StateGraph, END
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -43,20 +45,28 @@ class AgentState(TypedDict):
     filters: Optional[List[Filter]]
     error: Optional[str]
 
-# --- 3. Define Graph Nodes ---
-# These are the functions that will perform actions and modify the state.
+# --- NEW: 3. Define Supported Filters Schema ---
+# This is our "source of truth" for validation.
+# We define every allowed field, its operators, and the expected value type.
+SUPPORTED_FILTERS = {
+    "gender": {"operators": ["=", "!="], "type": str},
+    "joining_date": {"operators": ["=", "!=", ">", "<", ">=", "<=", "between"], "type": "date"},
+    "total_orders": {"operators": ["=", "!=", ">", "<", ">=", "<="], "type": int},
+    "store_rating": {"operators": ["=", "!=", ">", "<", ">=", "<=", "between"], "type": float},
+    "city": {"operators": ["=", "!="], "type": (str, list)},
+    "country": {"operators": ["=", "!="], "type": (str, list)},
+    # Add all other supported fields here...
+}
+
+
+# --- 4. Define Graph Nodes ---
 
 def parsing_node(state: AgentState):
-    """
-    Parses the user prompt into structured filters using an LLM.
-    """
-    print("--- 🧠 PARSING PROMPT ---")
-    
-    # This is the master system prompt. It's the most critical part of the logic.
+    """Parses the user prompt into structured filters using an LLM."""
+    print("\n--- 🧠 PARSING PROMPT ---")
     system_prompt = """
 You are an expert at converting natural language queries into structured JSON filters.
 Your task is to parse the user's prompt and extract a list of filter conditions.
-
 You must adhere to the following constraints:
 1.  The output must be a JSON object that matches this Pydantic schema: `StructuredOutput`.
 2.  The "field" must be one of the following supported fields:
@@ -66,11 +76,9 @@ You must adhere to the following constraints:
     - doesnt_have_email
     - country, city
 3.  The "operator" must be one of the following: =, !=, <, >, <=, >=, between.
-
 Here is an example:
 User prompt: "Find customers in Riyadh or Jeddah who joined after Jan 2023 with more than 5 orders."
 اعثر على العملاء في الرياض أو جدة الذين انضموا بعد يناير 2023 ولديهم أكثر من 5 طلبات
-
 Your JSON output:
 {
     "filters": [
@@ -80,37 +88,83 @@ Your JSON output:
     ]
 }
 """
-    # Initialize the LLM. We use GPT-4o for its strong instruction-following capabilities.
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest", temperature=0, convert_system_message_to_human=True)
-
-    # Use the .with_structured_output method to guarantee valid JSON
     structured_llm = llm.with_structured_output(StructuredOutput)
-
-    # Invoke the LLM with the system prompt and the user's input
-    result = structured_llm.invoke([
-        ("system", system_prompt),
-        ("human", state["prompt"])
-    ])
-    
-    print(f"--- ✅ PARSING COMPLETE --- \n{result}")
-
-    # Update the state with the parsed filters
+    result = structured_llm.invoke([("system", system_prompt), ("human", state["prompt"])])
+    print(f"--- ✅ PARSING COMPLETE ---")
     return {"filters": result.filters}
 
+# NEW: Node to validate the LLM's output
+def validation_node(state: AgentState):
+    """Validates the parsed filters against the supported schema."""
+    print("\n--- 🛡️ VALIDATING FILTERS ---")
+    if not state.get("filters"):
+        return {"error": "No filters were parsed from the prompt."}
 
-# --- 4. Build the LangGraph ---
-# This is where we define the flow of our agent.
+    validated_filters = []
+    for f in state["filters"]:
+        field_name = f.field
+        if field_name not in SUPPORTED_FILTERS:
+            error_msg = f"The field '{field_name}' is not supported. Please use one of: {list(SUPPORTED_FILTERS.keys())}"
+            print(f"--- ❌ VALIDATION FAILED: {error_msg} ---")
+            return {"error": error_msg, "filters": None}
+        
+        # Add more checks here for operators and value types later...
+        
+        # Simple date normalization example
+        if SUPPORTED_FILTERS[field_name]["type"] == "date":
+            try:
+                # Attempt to parse the date value
+                parsed_value = parse_date(str(f.value))
+                f.value = parsed_value.strftime("%Y-%m-%d")
+            except ValueError:
+                error_msg = f"Invalid date format for field '{field_name}': {f.value}"
+                print(f"--- ❌ VALIDATION FAILED: {error_msg} ---")
+                return {"error": error_msg, "filters": None}
 
-# For now, it's a simple, linear graph.
-# We will add validation and error handling in the next phase.
+        validated_filters.append(f)
+    
+    print("--- ✅ VALIDATION SUCCESSFUL ---")
+    return {"filters": validated_filters, "error": None}
+
+# NEW: A simple node to handle errors
+def error_node(state: AgentState):
+    """A simple node to print out the error and end the graph."""
+    print(f"\n--- 🛑 ERROR HANDLED ---")
+    print(state.get("error"))
+    return {}
+
+# --- NEW: 5. Define Conditional Routing ---
+def router(state: AgentState) -> Literal["error_node", "__end__"]:
+    """
+    This function decides the next step based on the agent's state.
+    If an error exists, it routes to the error_node. Otherwise, it ends.
+    """
+    if state.get("error"):
+        return "error_node"
+    return "__end__"
+
+# --- 6. Build the LangGraph ---
 workflow = StateGraph(AgentState)
+
 workflow.add_node("parser", parsing_node)
+workflow.add_node("validator", validation_node)
+workflow.add_node("error_handler", error_node)
 
-# Set the entry point and the end point
 workflow.set_entry_point("parser")
-workflow.set_finish_point("parser")
+workflow.add_edge("parser", "validator")
+workflow.add_edge("error_handler", END)
 
-# Compile the graph into a runnable app
+# NEW: Add the conditional edge for routing after validation
+workflow.add_conditional_edges(
+    "validator",
+    router,
+    {
+        "error_node": "error_handler",
+        "__end__": END,
+    },
+)
+
 app_graph = workflow.compile()
 
 
@@ -124,18 +178,15 @@ app = FastAPI(
 
 @app.post("/parse_prompt", tags=["Parsing"])
 async def parse_prompt_endpoint(request: ParseRequest):
-    """
-    Receives a natural language prompt and returns structured filters.
-    """
-    # The input for the graph is a dictionary with the key matching the state.
     graph_input = {"prompt": request.prompt}
-    
-    # Invoke the graph. The result will be the final state.
     final_state = app_graph.invoke(graph_input)
-    
+
+    if final_state.get("error"):
+        # In a real app, you might want a different status code
+        return {"error": final_state["error"]}
+        
     return {"filters": final_state.get("filters")}
 
 @app.get("/", tags=["Health Check"])
 async def root():
-    """Root endpoint to check if the API is running."""
     return {"status": "ok", "message": "AI Audience Agent is running!"}
