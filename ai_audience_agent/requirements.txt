@@ -1,15 +1,16 @@
 # API Framework
 fastapi
 uvicorn[standard]
+gunicorn
 
 # LangChain & LangGraph
 langchain
 langgraph
-langchain-google-genai # Or your preferred LLM provider library
+langchain-google-genai
 
 # Utilities
 pydantic
 python-dotenv
 python-dateutil
-pytest
 requests
+pytest
