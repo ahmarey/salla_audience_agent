@@ -46,5 +46,5 @@ jobs:
         run: |
           aws apprunner update-service \
             --service-arn ${{ env.APPRUNNER_SERVICE_ARN }} \
-            --source-configuration "ImageRepository={ImageIdentifier='${{ steps.build-image.outputs.image }}'}"
+            --source-configuration "ImageRepository={ImageRepositoryType=ECR,ImageIdentifier='${{ steps.build-image.outputs.image }}'}"
           echo "Update command sent. App Runner will now start a new deployment automatically."
