@@ -6,7 +6,7 @@ on:
       - main
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-east-2
   ECR_REPOSITORY: ai-audience-agent
   APPRUNNER_SERVICE_ARN: arn:aws:apprunner:us-east-2:474938201677:service/ai-agent-app-runner/6a1faf2b66d34c2dad70ba3a15d6d654 # Paste your Service ARN here
 
