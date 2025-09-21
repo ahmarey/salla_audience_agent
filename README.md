@@ -1,233 +1,100 @@
+AI Audience Agent
+An AI-powered microservice that translates natural language prompts in English and Arabic into structured JSON filters for audience segmentation. This project is fully containerized with Docker and features a complete CI/CD pipeline using GitHub Actions for automated deployment to AWS.
 
-# AI Audience Agent
+✨ Features
+Natural Language Processing: Understands complex user queries in both English and Arabic.
 
-[](https://www.python.org/downloads/)
-[](https://fastapi.tiangolo.com/)
-[](https://langchain-ai.github.io/langgraph/)
+Structured Output: Converts prompts into a predictable, machine-readable JSON format.
 
-An AI-powered microservice that translates natural language prompts in English and Arabic into structured JSON filters for audience segmentation.
+Robust Validation: Includes a validation layer to check for supported fields, operators, and normalize complex values (e.g., relative dates).
 
------
+Full Observability: Integrated with LangSmith for end-to-end tracing and debugging of every request.
 
-## ✨ Features
+Secure & Scalable Deployment: Deployed as a public service on AWS App Runner, protected at the edge by AWS Web Application Firewall (WAF).
 
-  * **Natural Language Processing:** Understands complex user queries in both English and Arabic.
-  * **Structured Output:** Converts prompts into a predictable, machine-readable JSON format.
-  * **Robust Validation:** Includes a validation layer to check for supported fields and operators, ensuring output quality.
-  * **Full Observability:** Integrated with **LangSmith** for end-to-end tracing and debugging of every request.
-  * **Scalable API:** Built with **FastAPI** and ready for containerized deployment.
+Automated CI/CD: A complete GitHub Actions pipeline automatically tests, builds, and deploys the application on every push to the main branch.
 
------
+🏛️ Final Architecture
+The final architecture uses AWS WAF as a security layer in front of a public AWS App Runner service. WAF inspects all incoming traffic and blocks unauthorized requests before they can reach the application.
 
-## 🛠️ Tech Stack
-
-  * **Backend Framework:** FastAPI
-  * **AI Orchestration:** LangGraph
-  * **Observability:** LangSmith
-  * **Data Validation:** Pydantic
-  * **Testing:** Pytest
-  * **Deployment:** Docker
-
------
-
-## 🏛️ Architecture
-
-The application uses a stateful graph built with **LangGraph** to process incoming prompts. This allows for a robust, multi-step flow that includes validation and error handling.
-
-**LangGraph Flow:**
-
-```mermaid
 graph TD
-    A[Input Node] --> B{Parsing Node};
-    B -- LLM Call --> C{Validation Node};
-    C -- Validation Success --> D[Output Node];
-    C -- Validation Failure --> E[Error Handling Node];
-    D --> F[Final JSON Response];
-    E --> G[Formatted Error Response];
-```
+    subgraph "Public Internet"
+        A[Client]
+    end
 
-1.  **Input Node:** Receives the raw user prompt.
-2.  **Parsing Node:** An LLM call is made with a carefully engineered prompt to extract entities and convert them into a preliminary JSON structure.
-3.  **Validation Node:** A Python function checks the generated JSON against a schema of supported `fields`, `operators`, and value types. It also normalizes data (e.g., relative dates).
-4.  **Conditional Routing:**
-      * If validation passes, the graph transitions to the **Output Node**.
-      * If validation fails, the graph transitions to the **Error Handling Node**.
-5.  **Output/Error Nodes:** The final, clean JSON or a structured error message is prepared for the API response.
+    subgraph "AWS Cloud"
+        A -- HTTPS Request w/ API Key --> B[AWS WAF];
+        B -- Blocks or Allows --> C[AWS App Runner Service];
+        C -- Runs Docker Container --> D[FastAPI App];
+        D -- Invokes --> E[LangGraph Agent];
+    end
 
------
+    E -- Parses & Validates --> F[✅ Valid JSON / ❌ Error];
 
-## 🚀 Getting Started
+🚢 CI/CD Pipeline
+This project is configured with a complete Continuous Integration and Continuous Deployment (CI/CD) pipeline using GitHub Actions.
 
-Follow these instructions to set up and run the project on your local machine.
+Trigger: The workflow automatically runs on every git push to the main branch.
 
-### Prerequisites
+Jobs:
 
-  * Python 3.9+
-  * A package manager like `pip`
-  * An LLM API Key (e.g., from OpenAI, Google, or Anthropic)
-  * A LangSmith API Key (optional but highly recommended)
+Build: Builds a new Docker image from the application's source code.
 
-### Installation
+Push: Tags the image with the unique Git commit SHA and pushes it to a private Amazon ECR repository.
 
-1.  **Clone the repository:**
+Deploy: Securely updates the AWS App Runner service to pull and deploy the new image from ECR, ensuring a zero-downtime update.
 
-    ```bash
-    git clone https://github.com/your-username/ai-audience-agent.git
-    cd ai-audience-agent
-    ```
+🛡️ Security
+The application endpoint is protected at the edge by AWS Web Application Firewall (WAF).
 
-2.  **Create and activate a virtual environment:**
+Authentication: The WAF is configured with a rule that requires a secret API Key to be sent in the x-api-key header of every request.
 
-    ```bash
-    python -m venv venv
-    source venv/bin/activate
-    # On Windows, use: venv\Scripts\activate
-    ```
+IP Restriction: A second rule is in place to only allow requests from a specific IP address, providing an additional layer of security.
 
-3.  **Install the required dependencies:**
+Default Action: The WAF's default action is to Block all requests that do not match the allow rules, ensuring no unauthorized traffic reaches the application.
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+✅ Testing & Validation
+The project includes a comprehensive, data-driven test suite to ensure high accuracy.
 
-4.  **Set up your environment variables:**
-    Create a file named `.env` in the root of the project and add your API keys.
+Test Dataset: A formal dataset of over 50 test cases is located at tests/test_data.json. It covers all supported fields, operators, and edge cases in both English and Arabic.
 
-    **.env.example**
+Local Testing: You can run the full suite against a local server using pytest.
 
-    ```env
-    # LLM Provider (e.g., OpenAI)
-    OPENAI_API_KEY="sk-..."
+pytest -v
 
-    # LangSmith Observability
-    LANGCHAIN_TRACING_V2="true"
-    LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
-    LANGCHAIN_API_KEY="..."
-    LANGCHAIN_PROJECT="AI Audience Agent" # Or any name you prefer
-    ```
+Accuracy Measurement: An evaluation script, run_accuracy_test.py, can be run against the deployed endpoint to calculate and report the final accuracy score, ensuring it meets the >90% success criteria.
 
------
+🚀 Running the Application
+Local Development
+Clone the repository and install dependencies from requirements.txt.
 
-## 🏃 Running the Application
+Set up your .env file with your GOOGLE_API_KEY and LangSmith credentials.
 
-With the setup complete, you can run the FastAPI server.
+Run the server:
 
-1.  **Start the server:**
-    The `--reload` flag will automatically restart the server when you make code changes.
+uvicorn app.main:app --reload
 
-    ```bash
-    uvicorn app.main:app --reload
-    ```
+Interacting with the Deployed API
+To interact with the final, deployed API, you must provide your App Runner public URL and the secret API Key.
 
-2.  **Access the API:**
-    The server will be running at `http://127.0.0.1:8000`. You can access the auto-generated documentation at `http://127.0.0.1:8000/docs`.
+Example curl Request:
 
-3.  **Send a test request:**
-    Use `curl` or any API client to test the `/parse_prompt` endpoint.
+curl -X 'POST' \
+  'https://w2xhkmywby.us-east-2.awsapprunner.com/parse_prompt' \
+  -H 'Content-Type: application/json' \
+  -H 'x-api-key: YOUR_SECRET_API_KEY' \
+  -d '{
+  "prompt": "Find customers with more than 10 orders"
+}'
 
-    **English Prompt:**
+Success Response (200 OK):
 
-    ```bash
-    curl -X 'POST' \
-      'http://127.0.0.1:8000/parse_prompt' \
-      -H 'accept: application/json' \
-      -H 'Content-Type: application/json' \
-      -d '{
-      "prompt": "Find customers who joined after Jan 2023 with more than 5 orders"
-    }'
-    ```
-
-    **Arabic Prompt:**
-
-    ```bash
-    curl -X 'POST' \
-      'http://127.0.0.1:8000/parse_prompt' \
-      -H 'accept: application/json' \
-      -H 'Content-Type: application/json' \
-      -d '{
-      "prompt": "اعثر على العملاء الذين انضموا بعد يناير 2023 ولديهم أكثر من 5 طلبات"
-    }'
-    ```
-
------
-
-## ✅ Testing
-
-The project includes a suite of tests to validate its accuracy against a predefined dataset.
-
-1.  **Run the test suite:**
-    From the root directory, run the following command:
-    ```bash
-    pytest
-    ```
-2.  **Success Criteria:**
-    The tests will pass if the agent achieves **≥ 90% accuracy** in correctly parsing the prompts from the bilingual test dataset located in `tests/data/test_cases.json`.
-
------
-
-## 🚢 Deployment
-
-The application is designed to be deployed as a Docker container.
-
-1.  **Build the Docker Image:**
-
-    ```bash
-    docker build -t ai-audience-agent .
-    ```
-
-2.  **Run the Docker Container Locally:**
-
-    ```bash
-    docker run -d --env-file .env -p 8000:8000 ai-audience-agent
-    ```
-
-3.  **Deploy to the Cloud:**
-    The container image can be pushed to a container registry (like Docker Hub, GCR, or ECR) and deployed to any of the following platforms:
-
-      * **GCP Cloud Run**
-      * **AWS ECS (with Fargate)**
-      * **Azure App Service**
-
------
-
-## 📄 API Documentation
-
-### POST `/parse_prompt`
-
-This endpoint accepts a natural language prompt and returns a structured JSON filter.
-
-**Request Body:**
-
-```json
-{
-  "prompt": "string"
-}
-```
-
-**Success Response (200 OK):**
-
-```json
 {
   "filters": [
     {
-      "field": "joining_date",
-      "operator": ">",
-      "value": "2023-01-01"
-    },
-    {
       "field": "total_orders",
       "operator": ">",
-      "value": 5
+      "value": 10
     }
   ]
 }
-```
-
-**Error Response (400 Bad Request):**
-This occurs if an unsupported field is mentioned in the prompt.
-
-```json
-{
-  "detail": "The field 'email_open_rate' is not supported. Please use one of: ['gender', 'birthday', 'joining_date', ...]"
-}
-```
