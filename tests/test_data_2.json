@@ -1,0 +1,333 @@
+[
+    {
+        "id": "gender_=_0_{'en':'male','ar':'ذكور'}",
+        "prompt_en": "Find male customers",
+        "prompt_ar": "اعثر على العملاء من ذكور",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "gender",
+                    "operator": "=",
+                    "value": "male"
+                }
+            ]
+        }
+    },
+    {
+        "id": "gender_=_0_{'en':'female','ar':'إناث'}",
+        "prompt_en": "Find female customers",
+        "prompt_ar": "اعثر على العملاء من إناث",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "gender",
+                    "operator": "=",
+                    "value": "female"
+                }
+            ]
+        }
+    },
+    {
+        "id": "gender_=_1_{'en':'female','ar':'إناث'}",
+        "prompt_en": "Show me the female clients",
+        "prompt_ar": "أرني العملاء الـ إناث",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "gender",
+                    "operator": "=",
+                    "value": "female"
+                }
+            ]
+        }
+    },
+    {
+        "id": "country_!=_0_{'en':'Egypt','ar':'مصر'}",
+        "prompt_en": "Everyone except those from Egypt",
+        "prompt_ar": "الجميع ما عدا أولئك من مصر",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "country",
+                    "operator": "!=",
+                    "value": "Egypt"
+                }
+            ]
+        }
+    },
+    {
+        "id": "country_!=_0_{'en':'Saudi Arabia','ar':'السعودية'}",
+        "prompt_en": "Everyone except those from Saudi Arabia",
+        "prompt_ar": "الجميع ما عدا أولئك من السعودية",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "country",
+                    "operator": "!=",
+                    "value": "Saudi Arabia"
+                }
+            ]
+        }
+    },
+    {
+        "id": "total_orders_>_0_5",
+        "prompt_en": "Customers with more than 5 orders",
+        "prompt_ar": "العملاء الذين لديهم أكثر من 5 طلبات",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "total_orders",
+                    "operator": ">",
+                    "value": 5
+                }
+            ]
+        }
+    },
+    {
+        "id": "total_orders_>_0_50",
+        "prompt_en": "Customers with more than 50 orders",
+        "prompt_ar": "العملاء الذين لديهم أكثر من 50 طلبات",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "total_orders",
+                    "operator": ">",
+                    "value": 50
+                }
+            ]
+        }
+    },
+    {
+        "id": "total_orders_>_0_100",
+        "prompt_en": "Customers with more than 100 orders",
+        "prompt_ar": "العملاء الذين لديهم أكثر من 100 طلبات",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "total_orders",
+                    "operator": ">",
+                    "value": 100
+                }
+            ]
+        }
+    },
+    {
+        "id": "total_sales_<=_0_100.5",
+        "prompt_en": "Clients with total sales of 100.5 or less",
+        "prompt_ar": "العملاء الذين تبلغ مبيعاتهم الإجمالية 100.5 أو أقل",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "total_sales",
+                    "operator": "<=",
+                    "value": 100.5
+                }
+            ]
+        }
+    },
+    {
+        "id": "total_sales_<=_1_5000.0",
+        "prompt_en": "Sales at most 5000.0",
+        "prompt_ar": "المبيعات بحد أقصى 5000.0",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "total_sales",
+                    "operator": "<=",
+                    "value": 5000.0
+                }
+            ]
+        }
+    },
+    {
+        "id": "total_sales_<=_1_999.99",
+        "prompt_en": "Sales at most 999.99",
+        "prompt_ar": "المبيعات بحد أقصى 999.99",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "total_sales",
+                    "operator": "<=",
+                    "value": 999.99
+                }
+            ]
+        }
+    },
+    {
+        "id": "joining_date_>=_0_7",
+        "prompt_en": "Customers who joined in the last 7 days",
+        "prompt_ar": "العملاء الذين انضموا في آخر 7 يومًا",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "joining_date",
+                    "operator": ">=",
+                    "value": "2025-09-14"
+                }
+            ]
+        }
+    },
+    {
+        "id": "joining_date_>=_1_30",
+        "prompt_en": "Signups from the past 30 days",
+        "prompt_ar": "التسجيلات من آخر 30 يوم",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "joining_date",
+                    "operator": ">=",
+                    "value": "2025-08-22"
+                }
+            ]
+        }
+    },
+    {
+        "id": "joining_date_>=_1_90",
+        "prompt_en": "Signups from the past 90 days",
+        "prompt_ar": "التسجيلات من آخر 90 يوم",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "joining_date",
+                    "operator": ">=",
+                    "value": "2025-06-23"
+                }
+            ]
+        }
+    },
+    {
+        "id": "store_rating_between_1_[3.0,5.0]",
+        "prompt_en": "Find ratings from 3.0 to 5.0",
+        "prompt_ar": "اعثر على التقييمات من 3.0 إلى 5.0",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "store_rating",
+                    "operator": "between",
+                    "value": [
+                        3.0,
+                        5.0
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "id": "store_rating_between_1_[1.5,3.5]",
+        "prompt_en": "Find ratings from 1.5 to 3.5",
+        "prompt_ar": "اعثر على التقييمات من 1.5 إلى 3.5",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "store_rating",
+                    "operator": "between",
+                    "value": [
+                        1.5,
+                        3.5
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "id": "have_cancelled_orders_=_1_True",
+        "prompt_en": "Find people with cancelled orders",
+        "prompt_ar": "اعثر على الأشخاص أصحاب الطلبات الملغاة",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "have_cancelled_orders",
+                    "operator": "=",
+                    "value": true
+                }
+            ]
+        }
+    },
+    {
+        "id": "city_=_0_['Riyadh','Jeddah']",
+        "prompt_en": "Users in Riyadh or Jeddah",
+        "prompt_ar": "المستخدمون في Riyadh أو Jeddah",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "city",
+                    "operator": "=",
+                    "value": [
+                        "Riyadh",
+                        "Jeddah"
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "id": "city_=_0_['Cairo','Alexandria']",
+        "prompt_en": "Users in Cairo or Alexandria",
+        "prompt_ar": "المستخدمون في Cairo أو Alexandria",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "city",
+                    "operator": "=",
+                    "value": [
+                        "Cairo",
+                        "Alexandria"
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "id": "multi_filter_complex_ar",
+        "prompt_en": "Female users from Egypt with sales over 1000",
+        "prompt_ar": "المستخدمات الإناث من مصر بمبيعات تزيد عن 1000",
+        "expected_status": 200,
+        "expected_output": {
+            "filters": [
+                {
+                    "field": "gender",
+                    "operator": "=",
+                    "value": "female"
+                },
+                {
+                    "field": "country",
+                    "operator": "=",
+                    "value": "Egypt"
+                },
+                {
+                    "field": "total_sales",
+                    "operator": ">",
+                    "value": 1000.0
+                }
+            ]
+        }
+    },
+    {
+        "id": "error_unsupported_field",
+        "prompt_en": "Customers with a high net promoter score",
+        "prompt_ar": "العملاء الذين لديهم درجة رضا عالية",
+        "expected_status": 400,
+        "expected_output": {
+            "detail": "No valid filters were found. The prompt may contain unsupported fields or be too ambiguous."
+        }
+    }
+]

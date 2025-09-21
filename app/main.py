@@ -51,7 +51,7 @@ SUPPORTED_FILTERS = {
     # Customer Attributes
     "gender": {"operators": ["=", "!="], "type": str},
     "birthday": {"operators": ["=", "!=", ">", "<", ">=", "<=", "between"], "type": "date"},
-    "birthday_days": {"operators": ["=", "!=", ">", "<", ">=", "<="], "type": int},
+    "birthday_days": {"operators": ["=", "!=", ">", "<", ">=", "<=", "between"], "type": int},
     "joining_date": {"operators": ["=", "!=", ">", "<", ">=", "<=", "between"], "type": "date"},
     "last_login": {"operators": ["=", "!=", ">", "<", ">=", "<=", "between"], "type": "date"},
     
@@ -132,13 +132,16 @@ def parsing_node(state: AgentState):
     """Parses the user prompt into structured filters using an LLM."""
     print("\n--- 🧠 PARSING PROMPT ---")
     system_prompt = """
-You are an expert at converting natural language queries into structured JSON filters.
+You are a precise, rule-following API assistant. Your ONLY job is to convert natural language queries in English and Arabic into a structured JSON object.
 Your task is to parse the user's prompt and extract a list of filter conditions.
 
-You must adhere to the following constraints:
-1.  The output must be a JSON object that matches this Pydantic schema: `StructuredOutput`.
-2.  **CRITICAL RULE: If the user's prompt contains a filter field that is NOT on the supported list, you MUST return an empty list for the "filters" key.** Do not try to guess a similar field.
-3.  **DATE RULE: If the user uses a relative date (e.g., "last 30 days", "yesterday", "2 weeks ago"), you MUST convert it to a static string like "last 30 days" or "2 weeks ago".** Do not convert it to a YYYY-MM-DD date yourself.
+You must adhere to these rules with NO exceptions:
+0.  The output must be a JSON object that matches this Pydantic schema: `StructuredOutput`.
+1.  **PARSE THE USER'S CURRENT PROMPT. IT IS FORBIDDEN TO USE THE EXAMPLES BELOW AS THE RESPONSE.** The examples are for formatting guidance only.
+2.  **STRICTLY ADHERE TO THE SUPPORTED FIELDS.** If the user asks for a field not on the list (e.g., "shoe size"), you MUST return `{"filters": []}`. DO NOT guess a similar field.
+3.  **EXPAND COUNTRY ABBREVIATIONS.** Convert common country codes to their full names (e.g., 'KSA' -> 'Saudi Arabia', 'UAE' -> 'United Arab Emirates').
+4.  **DATE RULE: If the user uses a relative date (e.g., "last 30 days", "yesterday", "2 weeks ago"), you MUST convert it to a static string like "last 30 days" or "2 weeks ago".** Do not convert it to a YYYY-MM-DD date yourself.
+
 
 Supported Fields:
 - gender, birthday, birthday_days, joining_date, last_login
@@ -148,7 +151,9 @@ Supported Fields:
 - country, city
 
 Supported Operators: =, !=, <, >, <=, >=, between
-Here is an example:
+
+---
+EXAMPLE 1:
 User prompt: "Find customers in Riyadh or Jeddah who joined after Jan 2023 with more than 5 orders."
 اعثر على العملاء في الرياض أو جدة الذين انضموا بعد يناير 2023 ولديهم أكثر من 5 طلبات
 Your JSON output:
@@ -159,6 +164,17 @@ Your JSON output:
         { "field": "total_orders", "operator": ">", "value": 5 }
     ]
 }
+---
+EXAMPLE 2:
+User prompt: "اعثر على العملاء من مصر"
+Your JSON output:
+{
+    "filters": [
+        { "field": "country", "operator": "=", "value": "Egypt" }
+    ]
+}
+---
+Remember: Your ONLY task is to parse the user's prompt based on the rules.
 """
     llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest", temperature=0, convert_system_message_to_human=True)
     structured_llm = llm.with_structured_output(StructuredOutput)
