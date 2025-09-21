@@ -1,7 +1,3 @@
-I can certainly help with that. Here is a perfectly formatted README for the AI Audience Agent project.
-
------
-
 # AI Audience Agent
 
 An AI-powered microservice that translates natural language prompts in English and Arabic into structured JSON filters for audience segmentation. This project is fully containerized with Docker and features a complete CI/CD pipeline using GitHub Actions for automated deployment to AWS.
