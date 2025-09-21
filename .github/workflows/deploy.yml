@@ -8,7 +8,7 @@ on:
 env:
   AWS_REGION: us-east-2
   ECR_REPOSITORY: salla/ai_audience_agent
-  APPRUNNER_SERVICE_ARN: arn:aws:apprunner:us-east-2:474938201677:service/ai-agent-app-runner/6a1faf2b66d34c2dad70ba3a15d6d654
+  APPRUNNER_SERVICE_ARN: arn:aws:apprunner:us-east-2:474938201677:service/ai-agent-app-runner_v2/6a1faf2b66d34c2dad70ba3a15d6d654
 
 jobs:
   deploy:
