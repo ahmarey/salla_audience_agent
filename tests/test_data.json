@@ -36,7 +36,7 @@
                 {
                     "field": "joining_date",
                     "operator": ">=",
-                    "value": "2025-09-12"
+                    "value": "2025-09-23"
                 }
             ]
         }
@@ -67,111 +67,5 @@
         "expected_output": {
             "detail": "No valid filters were found. The prompt may contain unsupported fields or be too ambiguous."
         }
-    }
-]
-[
-    {
-        "id": "en_equality_gender",
-        "prompt_en": "Find female customers",
-        "prompt_ar": "اعثر على العملاء الإناث",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "gender", "operator": "=", "value": "female" }] }
-    },
-    {
-        "id": "en_gt_orders",
-        "prompt_en": "Customers with more than 10 orders",
-        "prompt_ar": "العملاء الذين لديهم أكثر من 10 طلبات",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "total_orders", "operator": ">", "value": 10 }] }
-    },
-    {
-        "id": "en_between_rating",
-        "prompt_en": "Stores rated between 3.5 and 5 stars",
-        "prompt_ar": "المتاجر التي تقييمها بين 3.5 و 5 نجوم",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "store_rating", "operator": "between", "value": [3.5, 5.0] }] }
-    },
-    {
-        "id": "en_norm_or_city",
-        "prompt_en": "users in Riyadh or Jeddah",
-        "prompt_ar": "المستخدمون في الرياض أو جدة",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "city", "operator": "=", "value": ["Riyadh", "Jeddah"] }] }
-    },
-    {
-        "id": "en_norm_relative_date",
-        "prompt_en": "customers who signed up in the last 30 days",
-        "prompt_ar": "العملاء الذين انضموا في آخر 30 يومًا",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "joining_date", "operator": ">=", "value": "2025-08-22" }] }
-    },
-    {
-        "id": "en_lt_sales",
-        "prompt_en": "clients with total sales under 500.75",
-        "prompt_ar": "العملاء الذين تقل مبيعاتهم الإجمالية عن 500.75",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "total_sales", "operator": "<", "value": 500.75 }] }
-    },
-    {
-        "id": "en_boolean_true",
-        "prompt_en": "Show me people who have cancelled orders",
-        "prompt_ar": "أرني الأشخاص الذين لديهم طلبات ملغاة",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "have_cancelled_orders", "operator": "=", "value": true }] }
-    },
-    {
-        "id": "en_boolean_false",
-        "prompt_en": "Find users that don't have an email address",
-        "prompt_ar": "اعثر على المستخدمين الذين ليس لديهم بريد إلكتروني",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "doesnt_have_email", "operator": "=", "value": true }] }
-    },
-    {
-        "id": "en_not_equals",
-        "prompt_en": "Everyone except those from Egypt",
-        "prompt_ar": "الجميع ما عدا أولئك من مصر",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "country", "operator": "!=", "value": "Egypt" }] }
-    },
-    {
-        "id": "en_lte_date",
-        "prompt_en": "customers who last logged in on or before 2024-01-01",
-        "prompt_ar": "العملاء الذين سجلوا آخر دخول في أو قبل 2024-01-01",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "last_login", "operator": "<=", "value": "2024-01-01" }] }
-    },
-    {
-        "id": "en_relative_birthday",
-        "prompt_en": "Find customers whose birthday is in the next 7 days",
-        "prompt_ar": "اعثر على العملاء الذين عيد ميلادهم في الأيام السبعة القادمة",
-        "expected_status": 200,
-        "expected_output": { "filters": [{ "field": "birthday_days", "operator": "between", "value": [0, 7] }] }
-    },
-    {
-        "id": "ar_complex",
-        "prompt_en": "Male users from KSA with at least 3 orders",
-        "prompt_ar": "المستخدمون الذكور من السعودية ولديهم 3 طلبات على الأقل",
-        "expected_status": 200,
-        "expected_output": {
-            "filters": [
-                { "field": "gender", "operator": "=", "value": "male" },
-                { "field": "country", "operator": "=", "value": "KSA" },
-                { "field": "total_orders", "operator": ">=", "value": 3 }
-            ]
-        }
-    },
-    {
-        "id": "en_error_unsupported_field",
-        "prompt_en": "Find users by their shoe size",
-        "prompt_ar": "اعثر على المستخدمين حسب مقاس أحذيتهم",
-        "expected_status": 400,
-        "expected_output": { "detail": "No valid filters were found. The prompt may contain unsupported fields or be too ambiguous." }
-    },
-    {
-        "id": "en_error_invalid_value",
-        "prompt_en": "customers with total orders of five",
-        "prompt_ar": "العملاء الذين لديهم إجمالي طلبات \"خمسة\"",
-        "expected_status": 400,
-        "expected_output": { "detail": "Invalid value 'five' for field 'total_orders'. Details: invalid literal for int() with base 10: 'five'" }
     }
 ]

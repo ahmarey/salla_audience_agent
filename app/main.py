@@ -176,7 +176,7 @@ Your JSON output:
 ---
 Remember: Your ONLY task is to parse the user's prompt based on the rules.
 """
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro-latest", temperature=0, convert_system_message_to_human=True)
+    llm = ChatGoogleGenerativeAI(model="gemini-pro-latest", temperature=0, convert_system_message_to_human=True)
     structured_llm = llm.with_structured_output(StructuredOutput)
     result = structured_llm.invoke([("system", system_prompt), ("human", state["prompt"])])
     print(f"--- ✅ PARSING COMPLETE ---")
